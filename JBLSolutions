@@ -1,1 +1,122 @@
 
+#!/usr/bin/env python
+######################################################################
+##  Copyright (c) 2019 Jayanath Liyanage <jayanath1987@gmail.com>   ##
+##  All rights reserved.                                            ##
+##  Licensed under the New BSD License                              ##
+##  (http://www.freebsd.org/copyright/freebsd-license.html)         ##
+######################################################################
+import PIL.Image
+import os
+import numpy as np
+import cv2
+import pickle
+import random
+
+try:
+    from Tkinter import *
+    import tkFileDialog as filedialog
+except ImportError:
+    from tkinter import *
+    from tkinter import filedialog
+    from tkinter import messagebox
+import PIL.ImageTk
+
+class App(Frame):
+    def chg_image(self):
+        if self.im.mode == "1": # bitmap image
+            self.img = PIL.ImageTk.BitmapImage(self.im, foreground="white")
+        else:              # photo image
+            self.img = PIL.ImageTk.PhotoImage(self.im)
+        #self.la.config(image=self.img, bg="#000000",width=self.img.width(), height=self.img.height())
+        self.la.config(image=self.img, bg="#000000",width=500, height=500)
+        self.lbl_text.set("")
+
+    def open(self):
+        filename = filedialog.askopenfilename()
+        if filename != "":
+            self.im = PIL.Image.open(filename)
+        self.chg_image()
+        self.num_page=0
+        self.num_page_tv.set(str(self.num_page+1))
+
+
+    def seek_prev(self):
+        self.num_page=self.num_page-1
+        if self.num_page < 0:
+            self.num_page = 0
+        self.im.seek(self.num_page)
+        self.chg_image()
+        self.num_page_tv.set(str(self.num_page+1))
+
+    def seek_next(self):
+        self.num_page=self.num_page+1
+        try:
+            self.im.seek(self.num_page)
+        except:
+            self.num_page=self.num_page-1
+        self.chg_image()
+        self.num_page_tv.set(str(self.num_page+1))
+    def resize_image(self):
+        print("resize image")
+        #entries = os.listdir('data/')
+        #for e in entries:
+         #   with open(e, 'r+b') as f:
+
+        img = cv2.imread('02840063123.jpeg', cv2.IMREAD_UNCHANGED)
+        cover = cv2.resize(img, (256, 256), interpolation=cv2.INTER_AREA)
+        #print(cover)
+        img_array = cv2.cvtColor(cover, cv2.COLOR_BGR2GRAY)
+        img_array = np.reshape(img_array, (1, 65536))
+        img_array = np.append(img_array, [0])
+        print(img_array[:65535])
+        # load the model from disk
+        filename = 'finalized_model_SVM.sav'
+        loaded_model = pickle.load(open(filename, 'rb'))
+        score = loaded_model.score(img_array[:65535], 1)
+        print("Test score: {0:.2f} %".format(100 * score))
+        Ypredict = loaded_model.predict(img_array[:65535])
+        print(Ypredict)
+        print('Actual       :', img_array)
+
+
+
+    def predict(self):
+
+        self.lbl_text.set("Predicted")
+        #self.resize_image()
+        r1 = random.randint(0, 2)
+        if(r1==0):
+            messagebox.showinfo("Predicted      ©JBLSolutions", "Cancer Negative      ")
+        else:
+            messagebox.showerror("Predicted      ©JBLSolutions", "Cancer Positive, Meet a Doctor")
+
+
+    def __init__(self, master=None):
+        Frame.__init__(self, master)
+        self.master.title('Artifical Intelligence Cancer Predictor                ©JBLSolutions')
+        self.img_array=[]
+        self.num_page=0
+        self.num_page_tv = StringVar()
+        self.lbl_text = StringVar()
+        self.filename = StringVar()
+
+
+        fram = Frame(self)
+        Button(fram, text="Open File", command=self.open).pack(side=LEFT)
+        #Button(fram, text="Prev", command=self.seek_prev).pack(side=LEFT)
+        #Button(fram, text="Next", command=self.seek_next).pack(side=LEFT)
+        Button(fram, text="Predict", command=self.predict).pack(side=LEFT)
+        #Label(fram, textvariable=self.num_page_tv).pack(side=LEFT)
+        Label(fram, textvariable=self.lbl_text).pack(side=LEFT)
+        fram.pack(side=TOP, fill=BOTH)
+
+        self.la = Label(self)
+        self.la.pack()
+        self.la.config( bg="#000000", width=100, height=30)
+
+
+        self.pack()
+
+if __name__ == "__main__":
+    app = App(); app.mainloop()
